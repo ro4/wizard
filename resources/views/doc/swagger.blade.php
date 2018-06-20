@@ -11,15 +11,20 @@
             @include('components.doc-edit', ['project' => $project, 'pageItem' => $pageItem ?? null, 'navigator' => $navigator])
             <input type="hidden" name="type" value="swagger" />
 
-            <div class="col-row mb-5">
+            <div class="col-row swagger-editor-panel">
                 <div class="swagger-editor-toolbar">
                     <div class="btn-toolbar" role="toolbar" aria-label="Toolbar with button groups">
                         <div class="btn-group" role="group" aria-label="First group">
                             <button type="button" data-toggle="modal" data-target="#wz-select-template" class="btn btn-info btn-raised">@lang('document.select_template')</button>
                         </div>
+                        <div class="btn-group">
+                            <button type="button" class="btn btn-dark wz-fullscreen-edit">全屏编辑</button>
+                        </div>
                     </div>
                 </div>
-                <div id="editor-content"></div>
+                <div class="swagger-editor-body">
+                    <div id="editor-content" class="swagger-editor-content"></div>
+                </div>
             </div>
         </form>
     </div>
@@ -33,7 +38,7 @@
                     <h5 class="modal-title">@lang('document.select_template')</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
                 </div>
-                <div class="modal-body">
+                <div class="modal-body wz-swagger-template">
                     @foreach(wzTemplates(\App\Repositories\Template::TYPE_SWAGGER) as $temp)
                         <div class="radio">
                             <label>
@@ -63,10 +68,6 @@
             height: 100%;
             border:none;
         }
-        #editor-content {
-            height: 800px;
-            position: relative;
-        }
         .Pane2 {
             overflow-y: scroll;
         }
@@ -89,27 +90,9 @@
                 return window.editor.specSelectors.specStr();
             };
 
-            // 用于表单提交后回调，清理缓存内容
-            $.global.clearDocumentDraft = function () {
-                $.global.updateSwaggerDraft('');
-            };
-
             // 获取swagger编辑器本次存储内容的key
-            $.global.getSwaggerDraftKey = function() {
+            $.global.getDraftKey = function() {
                 return 'swagger-editor-content-{{ $project->id or '' }}-{{ $pageItem->id or '' }}';
-            };
-
-            // 获取swagger编辑器本地存储内容（未保存的内容）
-            $.global.updateSwaggerFromDraft = function (original, updateSwaggerContent) {
-                window.setTimeout(function () {
-                    if ($.global.getEditorContent() !== original) {
-                        $.wz.confirm('@lang('document.draft_continue_edit_confirm')', function () {
-                            updateSwaggerContent(original);
-                        }, function () {
-                            $.global.updateSwaggerDraft('');
-                        });
-                    }
-                }, 0);
             };
 
             window.editor = SwaggerEditorBundle({
@@ -136,6 +119,33 @@
 
                 window.editor.specActions.updateSpec(Base64.decode(template.data('content')));
                 templateSelector.modal('hide');
+            });
+
+            // 更新编辑器内容
+            $.global.updateEditorContent = function (content) {
+                window.editor.specActions.updateSpec(content);
+            };
+
+            // 动态调整swagger编辑器高度
+            $.global.windowResize = function () {
+                // var editorHeight = $('.wz-body').height() - ($('.wz-editor-header').height() + $('.swagger-editor-toolbar').height());
+                // $('.swagger-editor-body, .swagger-editor-content').height(editorHeight);
+                $('.swagger-editor-body, .swagger-editor-content').height($(window).height() - $('.swagger-editor-toolbar').height());
+                // 用于解决swagger编辑器初始时无法展示出所有文档代码的问题
+                $('.swagger-editor-content .ace_content').trigger('click');
+            };
+
+            // 全屏幕编辑支持
+            $('.wz-fullscreen-edit').on('click', function () {
+                var editor_panel = $('.swagger-editor-panel');
+                editor_panel.toggleClass('swagger-fullscreen');
+                if (editor_panel.hasClass('swagger-fullscreen')) {
+                    $('.wz-body').css('min-height', 'auto');
+                    $(this).text('关闭全屏');
+                } else {
+                    $('.wz-body').css('min-height', $.global.panel_height + 'px');
+                    $(this).text('全屏编辑');
+                }
             });
         });
     </script>

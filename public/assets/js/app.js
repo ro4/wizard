@@ -44,7 +44,26 @@ $.global = {
      * 表单提交时调用，获取页面中编辑器的内容
      */
     getEditorContent: function () {
-    }
+    },
+
+    /**
+     * 更新编辑器内容
+     */
+    updateEditorContent: function (content) {},
+
+    /**
+     * 获取文档草稿存储key
+     */
+    getDraftKey: function () {},
+
+    /**
+     * 窗口大小调整后触发的事件
+     */
+    windowResize: function () {},
+    /**
+     * 主面板高度
+     */
+    panel_height: 0
 };
 
 $(function () {

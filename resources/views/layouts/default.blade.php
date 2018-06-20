@@ -21,7 +21,7 @@
     {{--<link href="/assets/vendor/bootstrap/css/bootstrap.min.css" rel="stylesheet">--}}
     <link rel="stylesheet" href="/assets/vendor/material-design-icons/material-icons.css">
     <link rel="stylesheet" href="/assets/vendor/bootstrap-material-design/css/bootstrap-material-design.min.css">
-    <link href="/assets/vendor/font-awesome/css/font-awesome.min.css" rel="stylesheet">
+    <link href="/assets/vendor/font-awesome4/css/font-awesome.min.css" rel="stylesheet">
     <link href="/assets/vendor/wave/waves.min.css" rel="stylesheet">
 
     <!-- IE10 viewport hack for Surface/desktop Windows 8 bug -->
@@ -61,7 +61,7 @@
 @if(!isset($noheader) || !$noheader)
     <footer class="footer">
         <div class="@yield('container-style')">
-            <p>&copy; {{ date('Y') }} {{ config('wizard.copyright', 'AICODE.CC') }}  <a class="icon-github" target="_blank" href="https://github.com/mylxsw/wizard"></a></p>
+            <p>&copy; {{ date('Y') }} {{ config('wizard.copyright', 'AICODE.CC') }}  <a class="fa fa-github" target="_blank" href="https://github.com/mylxsw/wizard"></a></p>
         </div>
     </footer>
 @endif
@@ -102,7 +102,7 @@
 
         // 滚动到顶部事件
         $.scrollUp({
-            scrollText: '<span class="icon-arrow-up"></span>'
+            scrollText: '<span class="fa fa-chevron-up"></span>'
         });
 
         // 可关闭对话框关闭事件
@@ -131,6 +131,9 @@
 
                 var minHeight = (window_height > frame_height ? window_height : frame_height) + "px";
                 $($('.wz-panel-right').length ? '.wz-panel-right' : '.wz-body').css('min-height', minHeight);
+
+                $.global.windowResize();
+                $.global.panel_height = minHeight;
             };
 
             resize_window();
@@ -142,7 +145,20 @@
             $('[data-toggle="tooltip"]').tooltip({
                 delay: { "show": 500, "hide": 100 }
             });
-        }, 0);
+        }, 500);
+
+        // 左侧导航栏自适应布局切换
+        $('.wz-left-main-full .wz-left-main-switch').on('click', function (e) {
+            e.preventDefault();
+
+            $('.wz-left-main').slideToggle();
+            var icon = $(this).find('.fa')
+            if (icon.hasClass('fa-angle-double-up')) {
+                icon.removeClass('fa-angle-double-up').addClass('fa-angle-double-down');
+            } else {
+                icon.removeClass('fa-angle-double-down').addClass('fa-angle-double-up');
+            }
+        });
     });
 </script>
 

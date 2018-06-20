@@ -43,7 +43,7 @@
                         </label>
 
                         @if($user->id == 1)
-                            <i class="icon-question-sign" data-toggle="tooltip" title="该用户为系统初始管理员，不允许修改其身份"></i>
+                            <i class="fa fa-question-circle" data-toggle="tooltip" title="该用户为系统初始管理员，不允许修改其身份"></i>
                         @endif
                     </div>
                 </div>
@@ -88,7 +88,7 @@
                             </form>
                             <a href="#" wz-form-submit data-form="#form-user-{{ $user->id }}"
                                data-confirm="确定要将用户从该用户组移除？">
-                                解除
+                                <i class="material-icons text-danger" title="解除">remove_circle_outline</i>
                             </a>
                         </td>
                     </tr>

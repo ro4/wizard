@@ -62,6 +62,9 @@ Route::group(['middleware' => 'locale'], function () {
 
     // 系统管理
     Route::group(['middleware' => ['auth', 'auth.admin'], 'prefix' => 'admin', 'as' => 'admin:'], function () {
+        // 仪表盘
+        Route::get('/dashboard', 'DashboardController@index')->name('dashboard');
+
         // 用户组管理
         Route::get('/groups', 'GroupController@groups')->name('groups');
         Route::post('/groups', 'GroupController@add')->name('groups:add');
@@ -111,6 +114,9 @@ Route::group(['middleware' => 'locale'], function () {
 
             // 个人模板管理
             Route::get('/templates', 'TemplateController@all')->name('templates');
+            Route::delete('/templates/{id}', 'TemplateController@deleteTemplate')->name('templates:delete');
+            Route::get('/templates/{id}', 'TemplateController@edit')->name('templates:edit');
+            Route::put('/templates/{id}', 'TemplateController@editHandle')->name('templates:edit:handle');
         });
 
         Route::group(['prefix' => 'project', 'as' => 'project:'], function () {

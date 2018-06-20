@@ -43,6 +43,54 @@ form {
     }
 }
 
+
+.wz-left-main * {
+    box-sizing: initial;
+}
+
+.wz-left-main-full {
+    display: none;
+}
+
+@media screen and (max-width: 992px) {
+    .wz-left-main {
+        display: none;
+    }
+    
+    .wz-left-main-full {
+        display: block;
+    }
+
+    .wz-left-main-full .wz-left-main-switch {
+        width: 100%;
+    }
+}
+
+@media screen and (min-width: 768px) {
+    .wz-main-container-full {
+        padding: 0 15px 15px;
+    }
+}
+
+@media screen and (max-width: 768px) {
+    .wz-main-container-full {
+        padding: 0;
+    }
+
+    .container {
+        max-width: 98%;
+        margin-left: 2%;
+    }
+    
+    .wz-search-result-sign {
+        display: none;
+    }
+
+    .wz-userface-small {
+        display: none;
+    }
+}
+
 .container-narrow > hr {
     margin: 30px 0;
 }
@@ -99,11 +147,6 @@ a:hover {
 .wz-main-container, .wz-main-container > div {
     padding-right: 0;
     padding-left: 0;
-}
-
-.wz-main-container-full {
-    margin-top: 20px;
-    padding: 0 15px 15px;
 }
 
 .wz-project-title {
@@ -229,6 +272,10 @@ a:hover {
     margin: 0 0 20px;
 }
 
+.wz-main-container-full {
+    margin-top: 20px;
+}
+
 .wz-left-nav {
     padding-left: 20px;
     display: block;
@@ -240,7 +287,6 @@ a:hover {
 }
 
 .wz-left-nav a.wz-nav-fold {
-    /*background: #fff !important;*/
     color: #ccc !important;
     margin-right: 0;
     padding-right: 4px !important;
@@ -410,14 +456,6 @@ a:hover {
     text-align: center;
 }
 
-.swagger-ui .info {
-    margin: 20px 0 !important;
-}
-
-.swagger-editor-toolbar {
-    margin-bottom: 5px;
-    margin-left: -15px;
-}
 
 #scrollUp {
     bottom: 20px;
@@ -544,7 +582,7 @@ a:hover {
 }
 
 .wz-markdown-style-fix img {
-    max-width: 800px !important;
+    max-width: 940px !important;
     box-shadow: 3px 3px 7px #ccc;
 }
 
@@ -726,9 +764,6 @@ tr.warning {
     background: #e9efec;
 }
 
-.wz-left-main * {
-    box-sizing: initial;
-}
 
 .wz-comment-editor-box {
     display: flex;
@@ -859,3 +894,126 @@ tr.warning {
     background-color: #fff;
 }
 
+/* 隐藏swagger编辑器的标题部分 */
+.swagger-container .info .main, .swagger-ui .info .main {
+    display: none;
+}
+
+.swagger-ui table thead tr td, .swagger-ui table thead tr th,
+.swagger-ui .model,
+.swagger-ui .response-col_description__inner div.markdown,
+.swagger-ui .response-col_description__inner div.renderedMarkdown {
+    font-size: 14px !important;
+}
+
+.swagger-ui .opblock .opblock-summary-description,
+.swagger-ui .info li, .swagger-ui .info p, .swagger-ui .info table {
+    font-size: 16px !important;
+}
+
+.swagger-ui .opblock-tag {
+    font-size: 20px !important;
+}
+
+.swagger-ui .opblock-tag small {
+    font-size: 16px !important;
+}
+
+.swagger-ui .opblock-tag .markdown p {
+    margin: auto !important;
+    color: #bdbdbd;
+}
+
+.swagger-ui .wrapper {
+    padding: 0 !important;
+}
+
+.swagger-ui .scheme-container {
+    margin: 0 15px 22px !important;
+    padding: 30px 20px !important;
+    -webkit-box-shadow: -3px 6px 10px -2px rgba(0, 0, 0, .15) !important;
+    -moz-box-shadow: -3px 6px 10px -2px rgba(0, 0, 0, .15) !important;
+    box-shadow: -3px 6px 10px -2px rgba(0, 0, 0, .15) !important;
+    border-radius: 5px !important;
+}
+
+.swagger-ui .opblock {
+    -webkit-box-shadow: -3px 6px 10px -2px rgba(0, 0, 0, .15) !important;
+    -moz-box-shadow: -3px 6px 10px -2px rgba(0, 0, 0, .15) !important;
+    box-shadow: -3px 6px 10px -2px rgba(0, 0, 0, .15) !important;
+}
+
+.swagger-editor-body {
+    min-height: 800px;
+}
+
+.swagger-editor-body .swagger-editor-content {
+    position: absolute!important;
+    width: 100%!important;
+    left: 0!important;
+    min-height: 800px;
+}
+
+.swagger-ui .info {
+    margin: 20px 0 !important;
+}
+
+.swagger-editor-toolbar {
+    margin: 0 -10px -10px;
+}
+
+.swagger-ui .opblock .opblock-summary-description {
+    min-width: 200px;
+}
+
+.swagger-fullscreen {
+    position: absolute;
+    background: #fff;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+}
+
+.swagger-fullscreen .swagger-editor-toolbar {
+    margin: 0;
+}
+
+.wz-plain-textarea {
+    line-height: 1.5!important;
+    background: #f5f5f5;
+    padding: 11px;
+    border-radius: 5px;
+}
+
+.wz-plain-textarea:focus {
+    background: #d6d6d6;
+}
+
+.wz-swagger-template {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+
+/* 搜索结果页，文档类型图标效果 */
+.wz-search-result {
+    position: relative;
+}
+
+.wz-search-result .wz-search-result-sign {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    height: 30px;
+}
+
+/* vis 统计图 */
+.vis-timeline {
+    border: none;
+}
+
+.wz-editor-header {
+    margin-left: 0;
+    margin-right: 0;
+}

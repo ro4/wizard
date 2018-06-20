@@ -4,7 +4,10 @@
 @section('content')
 
     <div class="row wz-main-container">
-        <div class="col-3 wz-left-main">
+        <div class="col-12 wz-left-main-full">
+            <a class="wz-left-main-switch btn"><i class="fa fa-angle-double-down"></i> </a>
+        </div>
+        <div class="col-12 col-lg-3 wz-left-main">
             <div class="wz-project-title">
                 <a href="{{ wzRoute('project:home', ['id' => $project->id]) }}" class="wz-nav-item"
                     title="{{ $project->name }}">
@@ -15,9 +18,17 @@
                 @endphp
                 <div class="dropdown pull-right" style="margin-right: 20px;" role="group">
                     @if($hasEditPrivilege)
-                        <button type="button" class="btn bmd-btn-icon " data-href="{!! wzRoute('project:doc:new:show', ['id' => $project->id, 'pid' => $pageID]) !!}" title="创建Markdown文档">
+                        <button class="btn bmd-btn-icon dropdown-toggle" type="button" id="new-document" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
                             <i class="material-icons">add_to_photos</i>
                         </button>
+                        <ul class="dropdown-menu dropdown-menu-left" aria-labelledby="new-document" style="min-width: 13rem;">
+                            <a href="{!! wzRoute('project:doc:new:show', ['id' => $project->id, 'pid' => $pageID]) !!}" class="dropdown-item">
+                                <i class="fa fa-book mr-2"></i> 创建 @lang('common.markdown')
+                            </a>
+                            <a href="{!! wzRoute('project:doc:new:show', ['id' => $project->id, 'type' => 'swagger', 'pid' => $pageID]) !!}" class="dropdown-item">
+                                <i class="fa fa-align-justify mr-2"></i> 创建 @lang('common.swagger')
+                            </a>
+                        </ul>
                         <button type="button" class="btn bmd-btn-icon " data-href="{!! wzRoute('search:search', ['project_id' => $project->id]) !!}" title="搜索">
                             <i class="material-icons">search</i>
                         </button>
@@ -28,25 +39,11 @@
                         </button>
                     @endif
                     @if($hasEditPrivilege)
-                        <button class="btn bmd-btn-icon dropdown-toggle" type="button" id="project-menu" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                            <i class="material-icons">more_vert</i>
+                        @can('project-edit', $project)
+                        <button class="btn bmd-btn-icon" type="button" data-href="{{ wzRoute('project:setting:show', ['id' => $project->id]) }}" title="项目设置">
+                            <i class="material-icons">settings</i>
                         </button>
-                        <ul class="dropdown-menu dropdown-menu-left" aria-labelledby="project-menu" style="min-width: 13rem;">
-                            @can('page-add', $project)
-                                <a href="{!! wzRoute('project:doc:new:show', ['id' => $project->id, 'pid' => $pageID]) !!}" class="dropdown-item">
-                                    <i class="icon-book mr-2"></i> 创建 @lang('common.markdown')
-                                </a>
-                                <a href="{!! wzRoute('project:doc:new:show', ['id' => $project->id, 'type' => 'swagger', 'pid' => $pageID]) !!}" class="dropdown-item">
-                                    <i class="icon-align-justify mr-2"></i> 创建 @lang('common.swagger')
-                                </a>
-                            @endcan
-
-                            @can('project-edit', $project)
-                                <a href="{{ wzRoute('project:setting:show', ['id' => $project->id]) }}" class="dropdown-item">
-                                    <i class="icon-cog mr-2"></i> 项目设置
-                                </a>
-                            @endcan
-                        </ul>
+                        @endcan
                     @endif
                 </div>
             </div>
@@ -54,7 +51,7 @@
                 @include('components.navbar', ['navbars' => $navigators])
             </ul>
         </div>
-        <div class="col-9 wz-panel-right">
+        <div class="col-12 col-lg-9 wz-panel-right">
             <div class="panel panel-default">
                 <div class="panel-body" style="padding: 10px 15px;">
                     @yield('page-content')
