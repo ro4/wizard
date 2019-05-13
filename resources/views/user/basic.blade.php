@@ -5,7 +5,7 @@
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="{{ wzRoute('user:home') }}">@lang('common.home')</a></li>
         <li class="breadcrumb-item">个人中心</li>
-        <li class="breadcrumb-item active">用户信息</li>
+        <li class="breadcrumb-item active">@lang('common.user_info')</li>
     </ol>
 @endsection
 @section('user-content')
@@ -21,12 +21,21 @@
                 <div class="form-group">
                     <label for="editor-username" class="bmd-label-floating">@lang('common.username')</label>
                     <input type="text" class="form-control" value="{{ $user->name }}" id="editor-username"
-                           name="username" >
+                           name="username" {{ ldap_enabled() ? 'readonly' : '' }}>
                 </div>
+
+                @if (ldap_enabled())
+                    <div class="form-group">
+                        <label for="editor-objectguid" class="bmd-label-floating">LDAP 对象ID</label>
+                        <input type="text" class="form-control" value="{{ $user->objectguid }}" id="editor-objectguid"
+                               name="objectguid" readonly>
+                    </div>
+                @endif
 
                 <div class="form-group">
                     <div class="col-sm-offset-2 col-sm-10">
-                        <button type="submit" class="btn btn-success btn-raised">@lang('common.btn_save')</button>
+                        <button type="submit"
+                                class="btn btn-success btn-raised" {{ ldap_enabled() ? 'disabled' : '' }}>@lang('common.btn_save')</button>
                     </div>
                 </div>
             </form>

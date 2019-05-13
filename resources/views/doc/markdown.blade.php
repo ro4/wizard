@@ -4,16 +4,15 @@
 @section('content')
 
     <div class="row marketing wz-main-container-full">
-        @include('components.error', ['error' => $errors ?? null])
         <form class="w-100" method="POST" id="wz-doc-edit-form"
               action="{{ $newPage ? wzRoute('project:doc:new:show', ['id' => $project->id]) : wzRoute('project:doc:edit:show', ['id' => $project->id, 'page_id' => $pageItem->id]) }}">
 
             @include('components.doc-edit', ['project' => $project, 'pageItem' => $pageItem ?? null, 'navigator' => $navigator])
             <div class="row">
-                <input type="hidden" name="type" value="doc"/>
+                <input type="hidden" name="type" value="markdown"/>
                 <div class="col" style="padding-left: 0; padding-right: 0;">
                     <div id="editormd" class="wz-markdown-style-fix">
-                        <textarea style="display:none;" name="content">{{ $pageItem->content or '' }}</textarea>
+                        <textarea style="display:none;" name="content">{{ $pageItem->content ?? '' }}</textarea>
                     </div>
                 </div>
             </div>

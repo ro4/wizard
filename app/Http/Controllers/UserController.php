@@ -11,6 +11,7 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\ValidationException;
 use App\Http\Controllers\Auth\UserActivateChannel;
+use App\Repositories\Group;
 use App\Repositories\User;
 use Illuminate\Http\Request;
 
@@ -27,8 +28,46 @@ class UserController extends Controller
      */
     public function users(Request $request)
     {
+        $username   = $request->input('name');
+        $email      = $request->input('email');
+        $objectguid = $request->input('guid');
+        $role       = $request->input('role', null);
+        $status     = $request->input('status', null);
+
+        $userQuery = User::query();
+        if (!empty($username)) {
+            $userQuery->where('name', 'like', "%{$username}%");
+        }
+
+        if (!empty($email)) {
+            $userQuery->where('email', '=', $email);
+        }
+
+        if (!empty($objectguid)) {
+            $userQuery->where('objectguid', '=', $objectguid);
+        }
+
+        if (!is_null($role) && $role !== '') {
+            $userQuery->where('role', intval($role));
+        }
+
+        if (!is_null($status) && $status !== '') {
+            $userQuery->where('status', intval($status));
+        }
+
+        $users = $userQuery->orderBy('created_at', 'desc')->paginate();
+
+        $queries = [
+            'name'   => $username,
+            'email'  => $email,
+            'guid'   => $objectguid,
+            'role'   => $role,
+            'status' => $status,
+        ];
+
         return view('user.users', [
-            'users' => User::orderBy('created_at', 'desc')->paginate(),
+            'users' => $users->appends($queries),
+            'query' => $queries,
             'op'    => 'users',
         ]);
     }
@@ -36,15 +75,25 @@ class UserController extends Controller
     /**
      * 用户信息查看
      *
-     * @param int $id
+     * @param Request $request
+     * @param         $id
      *
      * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
      */
-    public function user($id)
+    public function user(Request $request, $id)
     {
+        /** @var User $user */
+        $user           = User::where('id', $id)->firstOrFail();
+        $subQuery       = function ($query) use ($user) {
+            $query->where('user_id', $user->id);
+        };
+        $groupForSelect = Group::whereDoesntHave('users', $subQuery)->get();
+
         return view('user.user', [
-            'user' => User::where('id', $id)->firstOrFail(),
-            'op'   => 'users',
+            'user'             => $user,
+            'op'               => 'users',
+            'group_for_select' => $groupForSelect,
+            'tab'              => $request->input('tab'),
         ]);
     }
 
@@ -57,9 +106,10 @@ class UserController extends Controller
      */
     public function basic(Request $request)
     {
+        $user = \Auth::user();
         return view('user.basic', [
             'op'   => 'basic',
-            'user' => \Auth::user(),
+            'user' => $user,
         ]);
     }
 
@@ -244,5 +294,35 @@ class UserController extends Controller
         }
 
         return redirect()->back();
+    }
+
+    /**
+     * 用户批量加入用户组
+     *
+     * @param Request $request
+     * @param         $id
+     *
+     * @return \Illuminate\Http\RedirectResponse|\Illuminate\Routing\Redirector
+     */
+    public function joinGroup(Request $request, $id)
+    {
+        $this->validate(
+            $request,
+            [
+                'groups' => 'required|array',
+            ],
+            [
+                'groups.required' => '您没有选择要加入的用户组',
+            ]
+        );
+
+        $groups = $request->input('groups');
+
+        $user = User::where('id', $id)->firstOrFail();
+        $user->groups()->attach($groups);
+
+        $this->alertSuccess(__('common.operation_success'));
+
+        return redirect(wzRoute('admin:user', ['id' => $id, 'tab' => 'user-group']));
     }
 }

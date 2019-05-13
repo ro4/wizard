@@ -17,7 +17,7 @@
                 <div class="bmd-form-group bmd-collapse-inline pull-right">
                     <i class="material-icons search-btn" data-input="#search-input">search</i>
                     <span id="search-input" style="{{ empty($name) ? 'display: none;' : '' }}">
-                        <input class="form-control" type="text" id="search" name="search_name" placeholder="搜索项目" value="{{ $name ?? '' }}">
+                        <input class="form-control" type="text" id="search" name="search_name" placeholder="搜索文档" value="{{ $name ?? '' }}">
                     </span>
                 </div>
             </div>
@@ -111,6 +111,9 @@
         <div class="card mb-4">
             <div class="card-header">最近活动</div>
             <div class="card-body" id="operation-log-recently"></div>
+            <div class="card-footer text-center">
+                <a href="#" class="wz-load-more">加载更多</a>
+            </div>
         </div>
         @include('components.doc-compare-script')
     @endif
@@ -124,13 +127,38 @@
         $(function () {
             moment.locale('zh-cn');
 
-            $.wz.request('get', '{{ wzRoute('operation-log:recently', ['catalog' => $catalog_id,]) }}', {}, function (data) {
-                $('#operation-log-recently').html(data);
+            var getRecentlyLogs = function (offset) {
+                $('.wz-load-more').html('加载中...');
+                $.wz.request('get', '{{ wzRoute('operation-log:recently', ['catalog' => $catalog_id,]) }}', {offset: offset}, function (data) {
+                    $('#operation-log-recently').append(data);
 
-                $('#operation-log-recently .wz-operation-log-time').map(function() {
-                    $(this).html(moment($(this).html(), 'YYYY-MM-DD hh:mm:ss').fromNow());
-                });
-            }, null, 'html');
+                    $('#operation-log-recently .wz-operation-log-time').map(function() {
+                        $(this).html(moment($(this).prop('title'), 'YYYY-MM-DD hh:mm:ss').fromNow());
+                    });
+
+                    if (data.trim() === "") {
+                        $('.wz-load-more').parent().html('没有更多了...');
+                    } else {
+                        $('.wz-load-more').html('加载更多');
+                    }
+
+                }, null, 'html');
+            };
+
+            // 初次加载最近操作日志
+            getRecentlyLogs(0);
+
+            $('.wz-load-more').click(function(e) {
+                e.preventDefault();
+                var offset = $('#operation-log-recently .wz-operation-log-time').size();
+                if (offset > 100) {
+                    $(this).parent().html('只能加载这么多了...');
+                    return;
+                }
+
+                getRecentlyLogs(offset);
+            });
+
         });
     </script>
     @endif
@@ -145,7 +173,9 @@
 
             $('#search-input').find('input').keydown(function (event) {
                 if (event.keyCode === 13) {
-                    window.location = "{{ route('home') }}?catalog={{ $catalog_id }}&name=" + encodeURIComponent($(this).val().trim());
+                    {{--window.location = "{{ route('home') }}?catalog={{ $catalog_id }}&name=" + encodeURIComponent($(this).val().trim());--}}
+                    // 首页文档目录搜索修改为文档搜素
+                    window.location = "{{ wzRoute('search:search') }}?keyword=" + encodeURIComponent($(this).val().trim());
                 }
             }).blur(function () {
                 var value = $(this).val().trim();

@@ -21,7 +21,13 @@
 use Illuminate\Support\Facades\Route;
 
 Route::group(['middleware' => 'locale'], function () {
-    Auth::routes();
+    // 如果启用 LDAP ，则不允许用户注册和重置密码
+    $ldapDisabled = !ldap_enabled();
+    Auth::routes([
+        'reset'    => $ldapDisabled,
+        'verify'   => $ldapDisabled,
+        'register' => $ldapDisabled,
+    ]);
 
     // 公共首页
     Route::get('/{catalog?}', 'HomeController@home')->name('home');
@@ -36,57 +42,71 @@ Route::group(['middleware' => 'locale'], function () {
     Route::get('/user/activate', 'UserController@activate')->name('user:activate');
 
     // 空白页，用于前端兼容
-    Route::get('/blank', function () {
-        return '';
-    })->name('blank');
+    Route::get('/blank', 'HomeController@blank')->name('blank');
 
     // 小工具
     Route::group(['middleware' => 'auth', 'prefix' => 'tools', 'as' => 'tools:'], function () {
-        Route::post('json-to-markdown', 'ToolController@convertJsonToTable')->name('json-to-markdown');
+        Route::post('json-to-markdown', 'ToolController@convertJsonToTable')
+            ->name('json-to-markdown');
     });
 
+    // 文件导出
+    Route::post('/export/{type}.pdf', 'ExportController@pdf')->name('export:pdf');
+    Route::post('/export-file/{filename}', 'ExportController@download')->name('export:download');
+
+    // 批量导出（项目）
+    Route::post('/project/{project_id}/export', 'BatchExportController@batchExport')->name('export:batch');
 
     Route::group(['prefix' => 'project', 'middleware' => 'share', 'as' => 'project:'], function () {
         // 项目分享
         Route::get('/{id}/doc/{page_id}.json', 'DocumentController@getPageJSON')->name('doc:json');
-        Route::get('/{id}/doc/{page_id}/histories/{history_id}.json', 'HistoryController@getPageJSON')->name('doc:history:json');
-
-        // 导出
-        Route::post('/{id}/doc/{page_id}.pdf', 'ExportController@pdf')->name('doc:pdf');
+        Route::get('/{id}/doc/{page_id}/histories/{history_id}.json',
+            'HistoryController@getPageJSON')->name('doc:history:json');
     });
 
     Route::group(['prefix' => 'swagger', 'as' => 'swagger:'], function () {
         // 获取swagger文档内容
         Route::get('/{id}/doc/{page_id}.yml', 'DocumentController@getSwagger')->name('doc:yml');
+        Route::get('/{id}/doc/{page_id}.json', 'DocumentController@getJson')->name('doc:json');
     });
 
     // 系统管理
-    Route::group(['middleware' => ['auth', 'auth.admin'], 'prefix' => 'admin', 'as' => 'admin:'], function () {
-        // 仪表盘
-        Route::get('/dashboard', 'DashboardController@index')->name('dashboard');
+    Route::group(['middleware' => ['auth', 'auth.admin'], 'prefix' => 'admin', 'as' => 'admin:'],
+        function () {
+            // 仪表盘
+            Route::get('/dashboard', 'DashboardController@index')->name('dashboard');
 
-        // 用户组管理
-        Route::get('/groups', 'GroupController@groups')->name('groups');
-        Route::post('/groups', 'GroupController@add')->name('groups:add');
-        Route::delete('/groups/{id}', 'GroupController@delete')->name('groups:del');
-        Route::get('/groups/{id}', 'GroupController@info')->name('groups:view');
-        Route::post('/groups/{id}/user', 'GroupController@addUser')->name('groups:users:add');
-        Route::post('/groups/{id}', 'GroupController@update')->name('groups:update');
-        Route::delete('/groups/{id}/users/{user_id}', 'GroupController@removeUser')->name('groups:users:del');
-        Route::post('/groups/{id}/projects', 'GroupController@grantProjects')->name('groups:projects:add');
+            // 用户组管理
+            Route::get('/groups', 'GroupController@groups')->name('groups');
+            Route::post('/groups', 'GroupController@add')->name('groups:add');
+            Route::delete('/groups/{id}', 'GroupController@delete')->name('groups:del');
+            Route::get('/groups/{id}', 'GroupController@info')->name('groups:view');
+            Route::post('/groups/{id}/user', 'GroupController@addUser')->name('groups:users:add');
+            Route::post('/groups/{id}', 'GroupController@update')->name('groups:update');
+            Route::delete('/groups/{id}/users/{user_id}', 'GroupController@removeUser')
+                ->name('groups:users:del');
+            Route::post('/groups/{id}/projects', 'GroupController@grantProjects')
+                ->name('groups:projects:add');
 
-        // 用户管理
-        Route::get('/users', 'UserController@users')->name('users');
-        Route::get('/users/{id}', 'UserController@user')->name('user');
-        Route::post('/users/{id}', 'UserController@updateUser')->name('user:update');
+            // 用户管理
+            Route::get('/users', 'UserController@users')->name('users');
+            Route::get('/users/{id}', 'UserController@user')->name('user');
+            Route::post('/users/{id}', 'UserController@updateUser')->name('user:update');
+            Route::post('/users/{id}/groups', 'UserController@joinGroup')->name('user:join-group');
 
-        // 项目目录管理
-        Route::get('/catalogs', 'CatalogController@catalogs')->name('catalogs');
-        Route::post('/catalogs', 'CatalogController@add')->name('catalogs:add');
-        Route::get('/catalogs/{id}', 'CatalogController@info')->name('catalogs:view');
-        Route::post('/catalogs/{id}', 'CatalogController@edit')->name('catalogs:edit');
-        Route::delete('/catalogs/{id}', 'CatalogController@delete')->name('catalogs:delete');
-        Route::delete('/catalogs/{id}/project/{project_id}', 'CatalogController@removeProject')->name('catalogs:project:del');
+            // 项目目录管理
+            Route::get('/catalogs', 'CatalogController@catalogs')->name('catalogs');
+            Route::post('/catalogs', 'CatalogController@add')->name('catalogs:add');
+            Route::get('/catalogs/{id}', 'CatalogController@info')->name('catalogs:view');
+            Route::post('/catalogs/{id}', 'CatalogController@edit')->name('catalogs:edit');
+            Route::delete('/catalogs/{id}', 'CatalogController@delete')->name('catalogs:delete');
+            Route::delete('/catalogs/{id}/project/{project_id}', 'CatalogController@removeProject')
+                ->name('catalogs:project:del');
+        });
+
+    // 文档搜索
+    Route::group(['prefix' => 'search', 'as' => 'search:'], function () {
+        Route::get('/', 'SearchController@search')->name('search');
     });
 
     Route::group(['middleware' => 'auth'], function () {
@@ -98,7 +118,8 @@ Route::group(['middleware' => 'locale'], function () {
         // 用户信息
         Route::group(['prefix' => 'user', 'as' => 'user:'], function () {
             // 重新发送账号激活邮件
-            Route::post('/activate/email', 'UserController@sendActivateEmail')->name('activate:send');
+            Route::post('/activate/email', 'UserController@sendActivateEmail')
+                ->name('activate:send');
             // 基本信息
             Route::get('/', 'UserController@basic')->name('basic');
             Route::post('/', 'UserController@basicHandle')->name('basic:handle');
@@ -109,14 +130,18 @@ Route::group(['middleware' => 'locale'], function () {
 
             // 通知消息
             Route::get('/notifications', 'NotificationController@lists')->name('notifications');
-            Route::put('/notifications/all', 'NotificationController@readAll')->name('notifications:read-all');
-            Route::put('/notifications/{notification_id}', 'NotificationController@read')->name('notifications:read');
+            Route::put('/notifications/all', 'NotificationController@readAll')
+                ->name('notifications:read-all');
+            Route::put('/notifications/{notification_id}', 'NotificationController@read')
+                ->name('notifications:read');
 
             // 个人模板管理
             Route::get('/templates', 'TemplateController@all')->name('templates');
-            Route::delete('/templates/{id}', 'TemplateController@deleteTemplate')->name('templates:delete');
+            Route::delete('/templates/{id}', 'TemplateController@deleteTemplate')
+                ->name('templates:delete');
             Route::get('/templates/{id}', 'TemplateController@edit')->name('templates:edit');
-            Route::put('/templates/{id}', 'TemplateController@editHandle')->name('templates:edit:handle');
+            Route::put('/templates/{id}', 'TemplateController@editHandle')
+                ->name('templates:edit:handle');
         });
 
         Route::group(['prefix' => 'project', 'as' => 'project:'], function () {
@@ -128,7 +153,8 @@ Route::group(['middleware' => 'locale'], function () {
             Route::get('/{id}/setting', 'ProjectController@setting')->name('setting:show');
             Route::post('/{id}/setting', 'ProjectController@settingHandle')->name('setting:handle');
             // 回收项目权限
-            Route::delete('/{id}/privilege/{group_id}', 'ProjectController@groupPrivilegeRevoke')->name('privilege:revoke');
+            Route::delete('/{id}/privilege/{group_id}', 'ProjectController@groupPrivilegeRevoke')
+                ->name('privilege:revoke');
 
             // 创建新的文档
             Route::get('/{id}/doc', 'DocumentController@newPage')->name('doc:new:show');
@@ -136,8 +162,14 @@ Route::group(['middleware' => 'locale'], function () {
 
             // 编辑文档
             Route::get('/{id}/doc/{page_id}', 'DocumentController@editPage')->name('doc:edit:show');
-            Route::post('/{id}/doc/{page_id}', 'DocumentController@editPageHandle')->name('doc:edit:handle');
-            Route::delete('/{id}/doc/{page_id}', 'DocumentController@deletePage')->name('doc:delete');
+            Route::post('/{id}/doc/{page_id}', 'DocumentController@editPageHandle')
+                ->name('doc:edit:handle');
+            Route::delete('/{id}/doc/{page_id}', 'DocumentController@deletePage')
+                ->name('doc:delete');
+
+            // 文档同步
+            Route::post('/{id}/doc/{page_id}/sync-from', 'DocumentController@syncFromRemote')
+                ->name('doc:sync-from');
 
             // 文档分享
             Route::post('/{id}/doc/{page_id}/share', 'ShareController@create')->name('doc:share');
@@ -146,29 +178,33 @@ Route::group(['middleware' => 'locale'], function () {
             Route::get('/{id}/doc/{page_id}/read', 'DocumentController@readMode')->name('doc:read');
 
             // 文档评论
-            Route::post('/{id}/doc/{page_id}/comments', 'CommentController@publish')->name('doc:comment');
+            Route::post('/{id}/doc/{page_id}/comments', 'CommentController@publish')
+                ->name('doc:comment');
 
             // 文档附件
-            Route::get('/{id}/doc/{page_id}/attachments', 'AttachmentController@page')->name('doc:attachment');
-            Route::delete('/{id}/doc/{page_id}/attachments/{attachment_id}', 'AttachmentController@delete')->name('doc:attachment:delete');
-            Route::post('/{id}/doc/{page_id}/attachments', 'AttachmentController@upload')->name('doc:attachment:upload');
+            Route::get('/{id}/doc/{page_id}/attachments', 'AttachmentController@page')
+                ->name('doc:attachment');
+            Route::delete('/{id}/doc/{page_id}/attachments/{attachment_id}',
+                'AttachmentController@delete')->name('doc:attachment:delete');
+            Route::post('/{id}/doc/{page_id}/attachments', 'AttachmentController@upload')
+                ->name('doc:attachment:upload');
 
             // ajax获取文档是否过期
-            Route::get('/{id}/doc/{page_id}/expired', 'DocumentController@checkPageExpired')->name('doc:expired');
+            Route::get('/{id}/doc/{page_id}/expired', 'DocumentController@checkPageExpired')
+                ->name('doc:expired');
 
             // 文档历史记录
-            Route::get('/{id}/doc/{page_id}/histories', 'HistoryController@pages')->name('doc:history');
-            Route::get('/{id}/doc/{page_id}/histories/{history_id}', 'HistoryController@page')->name('doc:history:show');
-            Route::put('/{id}/doc/{page_id}/histories/{history_id}', 'HistoryController@recover')->name('doc:history:recover');
+            Route::get('/{id}/doc/{page_id}/histories', 'HistoryController@pages')
+                ->name('doc:history');
+            Route::get('/{id}/doc/{page_id}/histories/{history_id}', 'HistoryController@page')
+                ->name('doc:history:show');
+            Route::put('/{id}/doc/{page_id}/histories/{history_id}', 'HistoryController@recover')
+                ->name('doc:history:recover');
 
             // 关注项目
             Route::post('/{id}/favorite', 'ProjectController@favorite')->name('favorite');
         });
 
-        // 文档搜索
-        Route::group(['prefix' => 'search', 'as' => 'search:'], function () {
-            Route::get('/', 'SearchController@search')->name('search');
-        });
 
         // 文档比较
         Route::post('/doc/compare', 'CompareController@compare')->name('doc:compare');
@@ -177,7 +213,8 @@ Route::group(['middleware' => 'locale'], function () {
         Route::post('/template', 'TemplateController@create')->name('template:create');
 
         // ajax获取操作历史
-        Route::get('/operations/recently', 'OperationLogController@recently')->name('operation-log:recently');
+        Route::get('/operations/recently', 'OperationLogController@recently')
+            ->name('operation-log:recently');
 
 
         Route::group(['prefix' => 'tag', 'as' => 'tag:'], function () {

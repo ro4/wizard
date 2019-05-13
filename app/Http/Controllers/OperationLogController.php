@@ -11,6 +11,7 @@ namespace App\Http\Controllers;
 
 use App\Repositories\Catalog;
 use App\Repositories\OperationLogs;
+use App\Repositories\Project;
 use Illuminate\Http\Request;
 
 class OperationLogController extends Controller
@@ -20,11 +21,13 @@ class OperationLogController extends Controller
         $this->validate($request, [
             'limit'      => 'in:my,global,project',
             'per_page'   => 'between:1,100',
+            'offset'     => 'between:0,100',
             'project_id' => 'integer',
             'catalog'    => 'integer',
         ]);
 
         $perPage   = (int)$request->input('per_page', 10);
+        $offset    = (int)$request->input('offset', 0);
         $limit     = $request->input('limit', 'global');
         $projectId = (int)$request->input('project_id');
         $catalogId = (int)$request->input('catalog');
@@ -34,7 +37,8 @@ class OperationLogController extends Controller
 
         // 值查询目录下的项目日志
         if (empty($projectId) && !empty($catalogId)) {
-            $projectIds = Catalog::where('id', $catalogId)->select(['id'])->pluck('id')->toArray();
+            $projectIds =
+                Project::where('catalog_id', $catalogId)->select(['id'])->pluck('id')->toArray();
             $operationLogModel->whereIn('project_id', $projectIds);
         }
 
@@ -47,7 +51,10 @@ class OperationLogController extends Controller
             $operationLogModel->where('project_id', $projectId);
         }
 
-        $operationLogs = $operationLogModel->orderBy('created_at', 'desc')->limit($perPage)->get();
+        $operationLogs = $operationLogModel->orderBy('created_at', 'desc')
+            ->limit($perPage)
+            ->offset($offset)
+            ->get();
 
         if ($request->wantsJson()) {
             return $operationLogs->transform(function (OperationLogs $operation) {

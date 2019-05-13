@@ -38,6 +38,7 @@
                         </button>
                     </li>
                 @endcan
+                @include('components.page-menus-export', ['project' => $project, 'pageItem' => $pageItem])
                 @include('components.page-menus', ['project' => $project, 'pageItem' => $pageItem])
             </ul>
             <div class="clearfix"></div>
@@ -46,16 +47,35 @@
             <h1 class="wz-page-title">
                 {{ $pageItem->title }}
                 @if($type == 'swagger')
-                    <a title="原始Swagger文档" target="_blank" href="{{ route('swagger:doc:yml', ['id' => $project->id, 'page_id' => $pageItem->id]) }}" class="fa fa-link"></a>
+                    <a title="原始Swagger文档" target="_blank" href="{{ route('swagger:doc:json', ['id' => $project->id, 'page_id' => $pageItem->id]) }}" class="fa fa-link"></a>
                 @endif
             </h1>
         </nav>
         @include('components.document-info')
         @include('components.tags')
 
+        @if (!empty($pageItem->sync_url))
+            <div class="wz-document-swagger-sync-info wz-panel-limit">
+                文档同步地址：<a href="{{ $pageItem->sync_url }}" target="_blank">{{ $pageItem->sync_url }}</a>，最后同步于 {{ $pageItem->last_sync_at ?? '-' }}
+                @can('page-edit', $pageItem)
+                    <a href="#" wz-form-submit data-form="#form-document-sync" data-confirm="执行文档同步后，您将成为最后修改人，确定要执行文档同步吗？" class="ml-2" title="同步文档">
+                        <i class="fa fa-refresh"></i>
+                        <form id="form-document-sync" method="post" style="display: none;"
+                              action="{{ wzRoute('project:doc:sync-from', ['id' => $pageItem->project_id, 'page_id' => $pageItem->id]) }}">
+                            {{ csrf_field() }}
+                        </form>
+                    </a>
+                @endcan
+            </div>
+        @endif
+
         <div class="markdown-body wz-panel-limit {{ $type == 'markdown' ? 'wz-markdown-style-fix' : '' }}" id="markdown-body">
             @if($type == 'markdown')
-            <textarea id="append-test" class="d-none">{{ $pageItem->content }}</textarea>
+            <textarea class="d-none wz-markdown-content">{{ $pageItem->content }}</textarea>
+            @endif
+            @if($type == 'table')
+                <textarea id="x-spreadsheet-content" class="d-none">{{ $pageItem->content }}</textarea>
+                <div id="x-spreadsheet"></div>
             @endif
         </div>
 
@@ -83,18 +103,22 @@
 
     @else
         <div class="wz-panel-breadcrumb">
-            <ol class="breadcrumb">
+            <ol class="breadcrumb pull-left">
                 <li class="breadcrumb-item"><a href="{{ wzRoute('home') }}">首页</a></li>
                 @if(!empty($project->catalog))
                     <li class="breadcrumb-item"><a href="{{ wzRoute('home', ['catalog' => $project->catalog->id]) }}">{{ $project->catalog->name }}</a></li>
                 @endif
                 <li class="breadcrumb-item active">{{ $project->name }}</li>
             </ol>
+            <ul class="nav nav-pills pull-right">
+                @include('components.page-menus-batch-export', ['project' => $project])
+            </ul>
+            <div class="clearfix"></div>
         </div>
-        <h1>{{ $project->name or '' }}</h1>
+        <h1>{{ $project->name ?? '' }}</h1>
 
         <p class="wz-document-header wz-panel-limit">@lang('document.document_create_info', ['username' => $project->user->name, 'time' => $project->created_at])</p>
-        <p class="wz-panel-limit">{{ $project->description or '' }}</p>
+        <p class="wz-panel-limit">{{ $project->description ?? '' }}</p>
 
         @if (!Auth::guest())
             <div class="wz-recently-log wz-panel-limit">

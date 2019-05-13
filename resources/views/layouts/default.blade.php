@@ -61,7 +61,11 @@
 @if(!isset($noheader) || !$noheader)
     <footer class="footer">
         <div class="@yield('container-style')">
-            <p>&copy; {{ date('Y') }} {{ config('wizard.copyright', 'AICODE.CC') }}  <a class="fa fa-github" target="_blank" href="https://github.com/mylxsw/wizard"></a></p>
+            <p>
+                &copy; {{ date('Y') }} {{ config('wizard.copyright', 'AICODE.CC') }}
+                <a class="fa fa-github" target="_blank" href="https://github.com/mylxsw/wizard"></a>
+                {!! statistics() !!}
+            </p>
         </div>
     </footer>
 @endif
@@ -83,6 +87,9 @@
 <script src="/assets/js/wizard.js?{{ resourceVersion() }}"></script>
 <script src="/assets/js/app.js?{{ resourceVersion() }}"></script>
 <script src="/assets/js/tagmanager.js"></script>
+
+@stack('script-pre')
+
 <script>
     $(function () {
         {{-- 页面提示消息（上一个页面操作的结果） --}}
@@ -152,7 +159,7 @@
             e.preventDefault();
 
             $('.wz-left-main').slideToggle();
-            var icon = $(this).find('.fa')
+            var icon = $(this).find('.fa');
             if (icon.hasClass('fa-angle-double-up')) {
                 icon.removeClass('fa-angle-double-up').addClass('fa-angle-double-down');
             } else {

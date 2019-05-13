@@ -18,6 +18,16 @@ use Illuminate\Pagination\LengthAwarePaginator;
 class HomeController extends Controller
 {
     /**
+     * 空白页，用于前端兼容
+     *
+     * @return string
+     */
+    public function blank()
+    {
+        return '';
+    }
+
+    /**
      * 公共首页
      *
      * 数据来源：
@@ -108,7 +118,9 @@ class HomeController extends Controller
         }
 
         // 标签
-        $tags = Tag::has('pages')->withCount('pages')->orderBy('pages_count', 'desc')->get();
+        if (empty($catalogId)) {
+            $tags = Tag::has('pages')->withCount('pages')->orderBy('pages_count', 'desc')->get();
+        }
 
         return view('index', [
             'projects'   => $projects->appends([

@@ -24,6 +24,24 @@ function wzRoute($name, $parameters = [], $absolute = false)
 }
 
 /**
+ * 文档类型标识转换
+ *
+ * @param $type
+ *
+ * @return string
+ */
+function documentType($type): string
+{
+    $types = [
+        \App\Repositories\Document::TYPE_DOC     => 'markdown',
+        \App\Repositories\Document::TYPE_SWAGGER => 'swagger',
+        \App\Repositories\Document::TYPE_TABLE   => 'table',
+    ];
+
+    return $types[$type] ?? '';
+}
+
+/**
  * 将页面集合转换为层级结构的菜单
  *
  * 必须保证pages是按照pid进行asc排序的，否则可能会出现菜单丢失
@@ -39,8 +57,15 @@ function navigator(
     int $pageID = 0,
     $exclude = []
 ) {
+    static $cached = [];
+
+    $key = "{$projectID}:{$pageID}:" . implode(':', $exclude);
+    if (isset($cached[$key])) {
+        return $cached[$key];
+    }
+
     $pages = \App\Repositories\Document::where('project_id', $projectID)->select(
-        'id', 'pid', 'title', 'project_id', 'type', 'status', 'created_at'
+        'id', 'pid', 'title', 'project_id', 'type', 'status', 'created_at', 'sort_level'
     )->orderBy('pid')->get();
 
     $navigators = [];
@@ -56,8 +81,9 @@ function navigator(
             'pid'        => (int)$page->pid,
             'url'        => route('project:home', ['id' => $projectID, 'p' => $page->id]),
             'selected'   => $pageID === (int)$page->id,
-            'type'       => $page->type == \App\Repositories\Document::TYPE_DOC ? 'markdown' : 'swagger',
+            'type'       => documentType($page->type),
             'created_at' => $page->created_at,
+            'sort_level' => $page->sort_level ?? 1000,
         ];
     }
 
@@ -71,9 +97,13 @@ function navigator(
         }
     }
 
-    return array_filter($navigators, function ($nav) {
+    $res = array_filter($navigators, function ($nav) {
         return $nav['pid'] === 0;
     });
+
+    $cached[$key] = $res;
+
+    return $res;
 }
 
 /**
@@ -85,19 +115,36 @@ function navigator(
  */
 function navigatorSort($navbars)
 {
-    usort($navbars, function ($a, $b) {
-        if (!empty($a['nodes'])) {
-            return -1;
-        }
-
-        if (!empty($b['nodes'])) {
-            return 1;
-        }
-
+    $sortItem = function ($a, $b) {
         try {
-            return $a['created_at']->greaterThan($b['created_at']);
+            if ($a['sort_level'] > $b['sort_level']) {
+                return 1;
+            } else if ($a['sort_level'] < $b['sort_level']) {
+                return -1;
+            } else {
+                return $a['created_at']->greaterThan($b['created_at']);
+            }
         } catch (Exception $e) {
             return 0;
+        }
+    };
+
+    usort($navbars, function ($a, $b) use ($sortItem) {
+
+        $aIsFolder = !empty($a['nodes']);
+        $bIsFolder = !empty($b['nodes']);
+
+        $bothIsFolder  = $aIsFolder && $bIsFolder;
+        $bothNotFolder = !$aIsFolder && !$bIsFolder;
+
+        if ($bothIsFolder || $bothNotFolder) {
+            return $sortItem($a, $b);
+        } else {
+            if ($aIsFolder) {
+                return -1;
+            }
+
+            return 1;
         }
     });
 
@@ -209,7 +256,7 @@ function userHasNotifications()
 
 /**
  * 用户通知消息数
- * 
+ *
  * @param int $limit 显示限制数量，如果提供了，则返回string类型的数量展示，最大值为$limit，超过数量显示为"$limit+"
  *
  * @return int|string
@@ -400,4 +447,49 @@ function comment_filter(string $comment): string
 
         return $matches[0];
     }, $comment);
+}
+
+
+/**
+ * 是否启用了LDAP支持
+ *
+ * @return bool
+ */
+function ldap_enabled(): bool
+{
+    static $enabled = null;
+    if (is_null($enabled)) {
+        $enabled = (bool)config('wizard.ldap.enabled');
+    }
+
+    return $enabled;
+}
+
+/**
+ * 站长统计代码区域
+ *
+ * @return string
+ */
+function statistics(): string
+{
+    $customFile = base_path('custom');
+    if (file_exists("{$customFile}/statistics.html")) {
+        return file_get_contents("{$customFile}/statistics.html");
+    }
+
+    return '';
+}
+
+/**
+ * 判断内容是否为json格式
+ *
+ * @param string $content
+ *
+ * @return bool
+ */
+function isJson($content): bool
+{
+    // 尝试解析为json
+    json_decode($content);
+    return json_last_error() === JSON_ERROR_NONE;
 }

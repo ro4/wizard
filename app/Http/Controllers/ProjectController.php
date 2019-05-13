@@ -22,9 +22,17 @@ use App\Repositories\DocumentHistory;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
+use Symfony\Component\Translation\Exception\NotFoundResourceException;
 
 class ProjectController extends Controller
 {
+    protected $types = [
+        Document::TYPE_DOC     => 'markdown',
+        Document::TYPE_SWAGGER => 'swagger',
+        Document::TYPE_TABLE   => 'table',
+    ];
+
     /**
      * 用户个人首页（个人项目列表）
      *
@@ -62,6 +70,7 @@ class ProjectController extends Controller
      *
      * @return array
      * @throws \Illuminate\Auth\Access\AuthorizationException
+     * @throws \Illuminate\Validation\ValidationException
      */
     public function newProjectHandle(Request $request)
     {
@@ -145,6 +154,7 @@ class ProjectController extends Controller
      * @param         $id
      *
      * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
+     * @throws \Illuminate\Validation\ValidationException
      */
     public function project(Request $request, $id)
     {
@@ -173,7 +183,7 @@ class ProjectController extends Controller
                 ->where('project_id', $id)
                 ->where('id', $pageID)
                 ->firstOrFail();
-            $type = $page->type == Document::TYPE_DOC ? 'markdown' : 'swagger';
+            $type = $this->types[$page->type];
 
             $history = DocumentHistory::where('page_id', $page->id)
                 ->where('id', '!=', $page->history_id)
@@ -209,13 +219,14 @@ class ProjectController extends Controller
      *
      * @return \Illuminate\Contracts\View\Factory|\Illuminate\View\View
      * @throws \Illuminate\Auth\Access\AuthorizationException
+     * @throws \Illuminate\Validation\ValidationException
      */
     public function setting(Request $request, $id)
     {
         $this->validate(
             $request,
             [
-                'op' => 'in:basic,privilege,advanced'
+                'op' => 'in:basic,privilege,advanced,sort'
             ]
         );
 
@@ -232,7 +243,7 @@ class ProjectController extends Controller
             case 'privilege':
                 $groups = Group::with([
                     'projects' => function ($query) use ($id) {
-                        $query->where('project_id', $id);
+                        $query->wherePivot('project_id', $id);
                     }
                 ])->get();
 
@@ -248,7 +259,9 @@ class ProjectController extends Controller
                 }
                 break;
             case 'advanced':
-
+                break;
+            case 'sort':
+                $viewData['navigators'] = navigator($id);
                 break;
         }
 
@@ -264,10 +277,11 @@ class ProjectController extends Controller
      *
      * @return \Illuminate\Http\RedirectResponse|\Illuminate\Routing\Redirector
      * @throws \Illuminate\Auth\Access\AuthorizationException
+     * @throws \Illuminate\Validation\ValidationException
      */
     public function settingHandle(Request $request, $id)
     {
-        $this->validate($request, ['op' => 'required|in:basic,privilege,advanced']);
+        $this->validate($request, ['op' => 'required|in:basic,privilege,advanced,sort']);
 
         $op = $request->input('op');
 
@@ -283,6 +297,9 @@ class ProjectController extends Controller
                 break;
             case 'advanced':
                 $updated = false;
+                break;
+            case 'sort':
+                $updated = $this->sortSettingHandle($request, $project);
                 break;
             default:
                 $updated = false;
@@ -306,7 +323,8 @@ class ProjectController extends Controller
      * @param Request $request
      * @param Project $project
      *
-     * @return bool 如果返回true，说明执行了更新操作，false说明没有更新
+     * @return bool
+     * @throws \Illuminate\Validation\ValidationException
      */
     private function basicSettingHandle(Request $request, Project $project): bool
     {
@@ -356,6 +374,7 @@ class ProjectController extends Controller
      * @param Project $project
      *
      * @return bool 如果返回true，说明执行了更新操作，false说明没有更新
+     * @throws \Illuminate\Validation\ValidationException
      */
     private function privilegeSettingHandle(Request $request, Project $project): bool
     {
@@ -374,6 +393,52 @@ class ProjectController extends Controller
         $project->groups()->attach($groupID, ['privilege' => $privilege == 'r' ? 2 : 1]);
 
         return true;
+    }
+
+    /**
+     * 更新项目中文档的排序
+     *
+     * @param Request $request
+     * @param Project $project
+     *
+     * @return bool
+     * @throws \Throwable
+     */
+    private function sortSettingHandle(Request $request, Project $project): bool
+    {
+        $sortLevelsJson = $request->input('sort_levels');
+        if (empty($sortLevelsJson)) {
+            return false;
+        }
+
+        $sortLevels = new Collection(json_decode($sortLevelsJson, true));
+
+        // 检查ID是否存在
+        $ids = $sortLevels->map(function ($s) {
+            return $s['id'];
+        });
+
+        /** @var \Illuminate\Database\Eloquent\Collection $documents */
+        $documents   =
+            Document::whereIn('id', $ids->toArray())->where('project_id', $project->id)->get();
+        $retrivedIds = $documents->map(function ($s) {
+            return $s->id;
+        });
+
+        if (!$ids->diff($retrivedIds)->isEmpty()) {
+            throw new NotFoundResourceException('部分文档不存在');
+        }
+
+        // 更新文档
+        $sortLevelsById = $sortLevels->keyBy('id');
+        \DB::transaction(function () use ($documents, $sortLevelsById) {
+            $documents->each(function (Document $doc) use ($sortLevelsById) {
+                $doc->sort_level = (int)$sortLevelsById->get($doc->id)['sort_level'];
+                $doc->save();
+            });
+        });
+
+        return false;
     }
 
     /**
@@ -410,6 +475,7 @@ class ProjectController extends Controller
      * @param         $id
      *
      * @return array
+     * @throws \Illuminate\Validation\ValidationException
      */
     public function favorite(Request $request, $id)
     {
